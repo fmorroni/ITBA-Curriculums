@@ -37,7 +37,7 @@ String.prototype.test_exactish_or_containing = function (search_string, ignore_t
     }
     if (match[0] === this.valueOf()) {
         return {match: true, exact: true};
-    }
+    }       
     else if (match) {
         return {match: true, exact: false};
     }
@@ -48,6 +48,46 @@ String.prototype.test_exactish_or_containing = function (search_string, ignore_t
 }
 
 class Materia {
+    constructor({nombre, código, créditos, créditos_requeridos,
+                correlativas, departamento, período, carrera, plan,
+                año, cuatrimestre, especialización} = {}) {
+                    
+        this.nombre = nombre;
+        this.código = código;
+        this.créditos = créditos;
+        this.correlativas = correlativas;
+        this.departamento = departamento;
+        this.en_qué_cuatris_se_da = período;
+        this.créditos_requeridos = créditos_requeridos;
+
+        function get_info_según_carrera() {
+            let info_según_carrera = {};
+            if (carrera !== undefined && plan !== undefined) {
+                if (especialización !== undefined) {
+                    info_según_carrera[`${plan}_${carrera}`] = {[especialización]: {año_según_plan: año, cuatrimestre_según_plan: cuatrimestre,}};
+                }
+                else {
+                    info_según_carrera[`${plan}_${carrera}`] = {año_según_plan: año, cuatrimestre_según_plan: cuatrimestre};
+                }
+            }
+
+            return info_según_carrera;
+        }
+
+        this.info_según_carrera = get_info_según_carrera();
+    }
+
+    agregar_carrera(plan, carrera, especialización, año, cuatrimestre) {
+        if (especialización === undefined) {
+            this.info_según_carrera[`${plan}_${carrera}`] = {año_según_plan: año, cuatrimestre_según_plan: cuatrimestre};
+        }
+        else {
+            this.info_según_carrera[`${plan}_${carrera}`] = {[especialización]: {año_según_plan: año, cuatrimestre_según_plan: cuatrimestre}};
+        }
+    }
+}
+
+/* class Materia {
     constructor({nombre, código, créditos, créditos_requeridos,
                 correlativas, departamento, período, carrera, plan,
                 año, cuatrimestre, especialización} = {}) {
@@ -65,7 +105,7 @@ class Materia {
     agregar_carrera(carrera, plan, año, cuatrimestre) {
         this.info_según_carrera.push({carrera: carrera, plan: plan, año_según_plan: año, cuatrimestre_según_plan: cuatrimestre});
     }
-}
+} */
 
 class ListadoMaterias {
     constructor(lista_materias = []) {
@@ -184,8 +224,10 @@ class ListadoMaterias {
                 document.querySelectorAll("tr > td > a")[0].click();
             }
             else if (document.querySelector("#content > h3").innerText === 'Detalle de Planes de estudio') {
-                let lista_completa = sessionStorage.getItem('lista_materias');
-                lista_completa = (lista_completa === null ? [] : JSON.parse(lista_completa));
+                let lista_completa = JSON.parse( sessionStorage.getItem('lista_completa_materias'));
+                if (lista_completa === null) {
+                    Error('Lista completa no almacenada.');
+                }
                 let materias_csv = '';
 
                 let tables = Array.from(document.querySelectorAll('body > div > div > div > div > table > tbody'));
