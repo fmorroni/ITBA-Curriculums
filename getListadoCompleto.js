@@ -48,9 +48,9 @@ String.prototype.test_exactish_or_containing = function (search_string, ignore_t
 }
 
 class Materia {
-    constructor({nombre, código, créditos, créditos_requeridos,
-                correlativas, departamento, período, carrera, plan,
-                año, cuatrimestre, especialización} = {}) {
+    constructor({nombre = null, código  = null, créditos  = null, créditos_requeridos = null,
+                correlativas = null, departamento = null, período = null, carrera = null, plan = null,
+                año = null, cuatrimestre = null, especialización = null} = {}) {
                     
         this.nombre = nombre;
         this.código = código;
@@ -117,9 +117,9 @@ class ListadoMaterias {
     }
 
     agregar_materia(materia) {
-        for (let [index, materia_repetida] of this.listado.entries()) {
-            if (materia.código === materia_repetida.código) {
-                this.listado[index].período = [materia_repetida.período, materia.período];
+        for (let [index, materia_ya_en_listado] of this.listado.entries()) {
+            if (materia.código === materia_ya_en_listado.código) {
+                this.listado[index].período = [materia_ya_en_listado.período, materia.período];
                 return;
             }
         }
@@ -224,55 +224,48 @@ class ListadoMaterias {
                 document.querySelectorAll("tr > td > a")[0].click();
             }
             else if (document.querySelector("#content > h3").innerText === 'Detalle de Planes de estudio') {
-                let lista_completa = JSON.parse( sessionStorage.getItem('lista_completa_materias'));
-                if (lista_completa === null) {
-                    Error('Lista completa no almacenada.');
-                }
-                let materias_csv = '';
+                let lista_completa = new ListadoMaterias(JSON.parse(sessionStorage.lista_completa_materias));
 
-                let tables = Array.from(document.querySelectorAll('body > div > div > div > div > table > tbody'));
+                let tables = Array.from(document.querySelectorAll('body > div > div > div > div > table'));
+                // Remueve la última tabla que es diferente y causa errores.
                 tables.pop();
-                // Remove last table which is different and causes an error.
-                let plan = sessionStorage.getItem('plan_actual_nombre');
-                let materias_plan_actual = new ListadoMaterias();
-                for (let table of tables) {
-                    let cuatris = table.rows;
-                    for (let cuatri of cuatris) {
-                        let [año, cuatrimestre] = cuatri.cells[0].querySelector('h4').innerText.split(' - ');
-                        // Evita tables tipo "Contenido:" en planes con especialización.
-                        if ((/año/i).test(año)) {
-                            año = parseInt(año.match(/\d+/)[0]);
-                            cuatrimestre = parseInt(cuatrimestre.match(/\d+/)[0]);
-                            let materias_cuatri = cuatri.cells[0].querySelector('table > tbody').rows;
-                            for (let materia of materias_cuatri) {
-                                let data = materia.cells;
-
-                                let nombre = data[0].innerText.split(' - ')[1];
-                                let código = data[0].innerText.split(' - ')[0];
-                                let créditos = parseInt(data[1].innerText);
-                                let créditos_requeridos = parseInt(data[2].innerText);
-                                let correlativas = [];
-                                for (let correlativa of data[3].querySelectorAll('span')) {
-                                    correlativas.push(correlativa.innerText.trim());
-                                }
-
-                                let match = materias_plan_actual.get_por_código(código);
-                                if (match.exact.length === 0 && match.containing.length === 0) {
-                                    let materia_actual = new Materia({nombre: nombre, código: código, créditos: créditos, créditos_requeridos: créditos_requeridos,
-                                                                      correlativas: correlativas, plan: plan, año: año, cuatrimestre: cuatrimestre});
-                                    materias_plan_actual.agregar_materia(materia_actual);
-
-                                    let materia_array = [];
-                                    for (let campo in materia_actual) {
-                                        materia_array.push(typeof(materia_actual[campo]) === 'object' ? Object.values(materia_actual[campo]) : materia_actual[campo]);
+                if (tables.length > 0) {
+                    let plan = sessionStorage.getItem('plan_actual_nombre');
+                    for (let table of tables) {
+                        let header = table.tHead.querySelector('div > span').innerText;
+                        if (!(/profesional/i.test(header))) {
+                            let cuatris = table.tBodies[0].rows;
+                            for (let cuatri of cuatris) {
+                                let [año, cuatrimestre] = cuatri.cells[0].querySelector('h4').innerText.split(' - ');
+                                // Evita tables tipo "Contenido:" en planes con especialización.
+                                if ((/año/i).test(año)) {
+                                    año = parseInt(año.match(/\d+/)[0]);
+                                    cuatrimestre = parseInt(cuatrimestre.match(/\d+/)[0]);
+                                    let materias_cuatri = cuatri.cells[0].querySelector('table > tbody').rows;
+                                    for (let materia of materias_cuatri) {
+                                        let data = materia.cells;
+        
+                                        let nombre = data[0].innerText.split(' - ')[1];
+                                        let código = data[0].innerText.split(' - ')[0];
+                                        let créditos = parseInt(data[1].innerText);
+                                        let créditos_requeridos = parseInt(data[2].innerText);
+                                        let correlativas = [];
+                                        for (let correlativa of data[3].querySelectorAll('span')) {
+                                            correlativas.push(correlativa.innerText.trim());
+                                        }
+        
+                                        let match = materias_plan_actual.get_por_código(código);
+                                        if (match.exact.length === 0) {
+                                            let materia_actual = new Materia({nombre: nombre, código: código, créditos: créditos, créditos_requeridos: créditos_requeridos,
+                                                                            correlativas: correlativas, plan: plan, año: año, cuatrimestre: cuatrimestre});
+                                        }
                                     }
-                                    materias_csv = materias_csv + materia_array.join('|-|') + '\n';
                                 }
                             }
                         }
                     }
+                    sessionStorage.setItem('lista_completa_materias', lista_completa + materias_csv);    
                 }
-                sessionStorage.setItem('lista_materias', lista_completa + materias_csv);
             }
         }
     });
