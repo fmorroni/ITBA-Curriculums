@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Conseguir listado completo de materias ITBA
+// @name         Conseguir listado completo de materias ITBA V2
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  try to take over the world!
@@ -48,22 +48,22 @@ String.prototype.test_exactish_or_containing = function (search_string, ignore_t
 }
 
 class Materia {
-    constructor({nombre = null, código  = null, créditos  = null, créditos_requeridos = null,
-                correlativas = null, departamento = null, período = null, carrera = null, plan = null,
-                año = null, cuatrimestre = null, especialización = null} = {}) {
+    constructor({nombre = null, código = null, créditos = null, créditos_requeridos = null,
+                correlativas = null, departamento = null, en_qué_cuatris_se_da = null,
+                carrera = null, plan = null, año = null, cuatrimestre = null, especialización = null} = {}) {
                     
         this.nombre = nombre;
         this.código = código;
         this.créditos = créditos;
         this.correlativas = correlativas;
         this.departamento = departamento;
-        this.en_qué_cuatris_se_da = período;
+        this.en_qué_cuatris_se_da = en_qué_cuatris_se_da;
         this.créditos_requeridos = créditos_requeridos;
 
         function get_info_según_carrera() {
             let info_según_carrera = {};
-            if (carrera !== undefined && plan !== undefined) {
-                if (especialización !== undefined) {
+            if (carrera !== null && plan !== null) {
+                if (especialización !== null) {
                     info_según_carrera[`${plan}_${carrera}`] = {[especialización]: {año_según_plan: año, cuatrimestre_según_plan: cuatrimestre,}};
                 }
                 else {
@@ -78,12 +78,28 @@ class Materia {
     }
 
     agregar_carrera(plan, carrera, especialización, año, cuatrimestre) {
-        if (especialización === undefined) {
+        if (especialización === null) {
             this.info_según_carrera[`${plan}_${carrera}`] = {año_según_plan: año, cuatrimestre_según_plan: cuatrimestre};
         }
         else {
             this.info_según_carrera[`${plan}_${carrera}`] = {[especialización]: {año_según_plan: año, cuatrimestre_según_plan: cuatrimestre}};
         }
+    }
+
+    get empty_fields() {
+        let empty_fields = [];
+        for (let key in this) { 
+            if (this[key] === null) {
+                empty_fields.push(key);
+            }
+            if (key === "info_según_carrera") {
+                if (Object.keys(this[key]).length === 0)
+                {
+                    empty_fields.push(key);
+                }
+            }
+        }
+        return empty_fields;
     }
 }
 
@@ -109,14 +125,24 @@ class Materia {
 
 class ListadoMaterias {
     constructor(lista_materias = []) {
+        if (lista_materias.length > 0) {
+            for (let [index, materia] of lista_materias.entries()) {
+                lista_materias[index] = new Materia(materia);
+            }
+        }
         this.listado = lista_materias;
     }
 
     update(lista_materias) {
+        if (lista_materias.length > 0) {
+            for (let [index, materia] of lista_materias.entries()) {
+                lista_materias[index] = new Materia(materia);
+            }
+        }
         this.listado = lista_materias;
     }
 
-    agregar_materia(materia) {
+    /* agregar_materia(materia) {
         for (let [index, materia_ya_en_listado] of this.listado.entries()) {
             if (materia.código === materia_ya_en_listado.código) {
                 this.listado[index].período = [materia_ya_en_listado.período, materia.período];
@@ -124,6 +150,29 @@ class ListadoMaterias {
             }
         }
         this.listado.push(materia);
+    } */
+
+    agregar_materia(materia) {
+        let materia_en_listado = this.get_por_código(materia.código).exact;
+        // Si ya está la materia en el listado.
+        if (materia_en_listado.length === 1) {
+            materia_en_listado = materia_en_listado[0];
+            let fields_to_replace = materia_en_listado.empty_fields;
+            for (let field of fields_to_replace) {
+                materia_en_listado[field] = materia[field];
+            }
+        }
+        // Si no está la materia en el listado la agregamos.
+        else if (materia_en_listado.length === 0) {
+            this.listado.push(materia);
+        }
+        // Si hay dos materias con el mismo código hay algún problema...
+        else {
+            console.log(`Cuidado: Hay más de una materia con código "${materia.código}"`);
+            return Error(`Más de una materia con código "${materia.código}"`);
+        }
+
+        return 0;
     }
 
     get_por_propiedad(search_string, get_propiedad, ignore_tildes = false) {
@@ -148,19 +197,19 @@ class ListadoMaterias {
     }
 
     get_por_código(código) {
-        return this.get_por_propiedad(código.toString(), materia => materia.código)
+        return this.get_por_propiedad(código, materia => materia.código, false);
     }
 
     get_por_créditos(créditos) {
-        return this.get_por_propiedad(créditos.toString(), materia => materia.créditos)
+        return this.get_por_propiedad(créditos, materia => materia.créditos);
     }
 
     get_por_créditos_requeridos(créditos_requeridos) {
-        return this.get_por_propiedad(créditos_requeridos.toString(), materia => materia.créditos_requeridos)
+        return this.get_por_propiedad(créditos_requeridos, materia => materia.créditos_requeridos);
     }
 
     get_por_correlativas(correlativas) {
-        return this.get_por_propiedad(correlativas.toString(), materia => materia.correlativas)
+        return this.get_por_propiedad(correlativas, materia => materia.correlativas);
     }
 }
 
@@ -186,7 +235,7 @@ class ListadoMaterias {
                     for (let row of data){
                         let [código, nombre, , departamento, período] = row.cells;
                         let materia = new Materia({nombre: nombre.innerText, código: código.innerText,
-                                                   departamento: departamento.innerText, período: período.innerText});
+                                                   departamento: departamento.innerText, en_qué_cuatris_se_da: período.innerText});
                         materias_página_actual.agregar_materia(materia);
                     }
                     let lista_completa = sessionStorage.getItem('lista_completa_materias');
