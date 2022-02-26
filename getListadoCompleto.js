@@ -218,7 +218,7 @@ class ListadoMaterias {
 
     document.addEventListener('readystatechange', (event) => {
         if (document.readyState == 'complete') {
-            // Si estoy en Académica > Cursos
+            // Si estoy en Académica > Cursos tomo los datos disponibles de todas las materias.
             if (document.querySelector("#content > h3").innerText === 'Cursos') {
                 let current_page = sessionStorage.getItem('current_page');
                 if (current_page === null && document.querySelector('em > span').innerText === '1') {
@@ -252,7 +252,7 @@ class ListadoMaterias {
                     }
                 }
             }
-            // Si estoy en Académica > Carreras
+            // Si estoy en Académica > Carreras elijo cada carrera de a una para ir sacando la información faltante de las materias.
             else if (document.querySelector("#content > h3").innerText === 'Listado de carreras') {
                 let listado_carreras = document.querySelectorAll('tbody > tr');
 
@@ -265,6 +265,7 @@ class ListadoMaterias {
                 sessionStorage.setItem('carrera_actual_index', carrera_actual_index + 1);
                 listado_carreras[carrera_actual_index].querySelectorAll('a')[0].click();
             }
+            // Elijo el plan.
             else if (document.querySelector("#content > h3").innerText === 'Listado de Planes de estudio') {
                 // Ir al primer plan de la lista que debería ser el más actualizado.
                 let plan_actual_nombre = document.querySelectorAll("table > tbody > tr")[0].cells[0].innerText;
@@ -272,6 +273,7 @@ class ListadoMaterias {
 
                 document.querySelectorAll("tr > td > a")[0].click();
             }
+            // Si estoy dentro del plan de una carrera.
             else if (document.querySelector("#content > h3").innerText === 'Detalle de Planes de estudio') {
                 let lista_completa = new ListadoMaterias(JSON.parse(sessionStorage.lista_completa_materias));
 
@@ -279,41 +281,55 @@ class ListadoMaterias {
                 // Remueve la última tabla que es diferente y causa errores.
                 tables.pop();
                 if (tables.length > 0) {
-                    let plan = sessionStorage.getItem('plan_actual_nombre');
+                    let plan_actual = sessionStorage.plan_actual_nombre;
+                    let carrera_actual = sessionStorage.carrera_actual_nombre;
                     for (let table of tables) {
-                        let header = table.tHead.querySelector('div > span').innerText;
-                        if (!(/profesional/i.test(header))) {
-                            let cuatris = table.tBodies[0].rows;
-                            for (let cuatri of cuatris) {
-                                let [año, cuatrimestre] = cuatri.cells[0].querySelector('h4').innerText.split(' - ');
-                                // Evita tables tipo "Contenido:" en planes con especialización.
-                                if ((/año/i).test(año)) {
+                        let header = table.tHead.innerText;
+                        if (!(/orientaciones/i.test(header))) {
+                            // Sacar solo la parte importante de los headers.
+                            header = header.split(/(\s-\s)|(\s\()/)[0];
+                            if (!(/electivas/i.test(header))) {
+                                let cuatris = table.tBodies[0].rows;
+                                for (let cuatri of cuatris) {
+                                    let [año, cuatrimestre] = cuatri.cells[0].querySelector('h4').innerText.split(' - ');
                                     año = parseInt(año.match(/\d+/)[0]);
                                     cuatrimestre = parseInt(cuatrimestre.match(/\d+/)[0]);
                                     let materias_cuatri = cuatri.cells[0].querySelector('table > tbody').rows;
                                     for (let materia of materias_cuatri) {
                                         let data = materia.cells;
-        
-                                        let nombre = data[0].innerText.split(' - ')[1];
-                                        let código = data[0].innerText.split(' - ')[0];
-                                        let créditos = parseInt(data[1].innerText);
-                                        let créditos_requeridos = parseInt(data[2].innerText);
-                                        let correlativas = [];
-                                        for (let correlativa of data[3].querySelectorAll('span')) {
-                                            correlativas.push(correlativa.innerText.trim());
-                                        }
-        
-                                        let match = materias_plan_actual.get_por_código(código);
-                                        if (match.exact.length === 0) {
-                                            let materia_actual = new Materia({nombre: nombre, código: código, créditos: créditos, créditos_requeridos: créditos_requeridos,
-                                                                            correlativas: correlativas, plan: plan, año: año, cuatrimestre: cuatrimestre});
+                                        // Si el nombre no es un link quiere decir que no es una materia, lo cual rompería la lista.
+                                        if (data[0].querySelector('a')) {
+                                            let nombre = data[0].innerText.split(' - ')[1];
+                                            let código = data[0].innerText.split(' - ')[0];
+                                            let créditos = parseInt(data[1].innerText);
+                                            let créditos_requeridos = parseInt(data[2].innerText);
+                                            let correlativas = [];
+                                            for (let correlativa of data[3].querySelectorAll('span')) {
+                                                correlativas.push(correlativa.innerText.trim());
+                                            }
+                                            let especialización = null;
+                                            if(!(/ciclo/i.test(header))) {
+                                                especialización = header;
+                                            }
+                                            let materia_actual = new Materia ({ nombre: nombre, 
+                                                                                código: código, 
+                                                                                créditos: créditos, 
+                                                                                créditos_requeridos: créditos_requeridos, 
+                                                                                correlativas: correlativas, 
+                                                                                carrera: carrera_actual, 
+                                                                                plan: plan_actual, 
+                                                                                año: año, 
+                                                                                cuatrimestre: cuatrimestre, 
+                                                                                especialización: especialización});
+                                            
+                                            lista_completa.agregar_materia(materia_actual);    
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                    sessionStorage.setItem('lista_completa_materias', lista_completa + materias_csv);    
+                    sessionStorage.setItem('lista_completa_materias', JSON.stringify(lista_completa.listado));    
                 }
             }
         }
