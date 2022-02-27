@@ -183,20 +183,8 @@ class ListadoMaterias {
         return this.get_por_propiedad(créditos, materia => materia.créditos);
     }
 
-    get_por_créditos_requeridos(créditos_requeridos) {
-        return this.get_por_propiedad(créditos_requeridos, materia => materia.créditos_requeridos);
-    }
-
     get_por_correlativas(correlativas) {
         return this.get_por_propiedad(correlativas, materia => materia.correlativas);
-    }
-
-    get_por_año(año) {
-        return this.get_por_propiedad(año, materia => materia.año);
-    }
-
-    get_por_cuatrimestre(cuatrimestre) {
-        return this.get_por_propiedad(cuatrimestre, materia => materia.cuatrimestre);
     }
 
     get_por_departamento(departamento) {
@@ -206,8 +194,20 @@ class ListadoMaterias {
     get_por_créditos(créditos) {
         return this.get_por_propiedad(créditos, materia => materia.créditos);
     }
+/*
+    get_por_año(año) {
+        return this.get_por_propiedad(año, materia => materia.año);
+    }
 
-/*     get_materia({
+    get_por_cuatrimestre(cuatrimestre) {
+        return this.get_por_propiedad(cuatrimestre, materia => materia.cuatrimestre);
+    }
+
+    get_por_créditos_requeridos(créditos_requeridos) {
+        return this.get_por_propiedad(créditos_requeridos, materia => materia.créditos_requeridos);
+    }
+
+    get_materia({
         nombre = null,
         código = null,
         créditos = null,
@@ -216,8 +216,8 @@ class ListadoMaterias {
         año = null,
         cuatrimestre = null,
         departamento = null,
-        período = null} = {})
-    {
+        período = null} = {}){
+
         let matches = [];
         for (let materia of this.listado) {
             if (test_ignore_tildes(materia.nombre, identificador)) {
@@ -302,7 +302,10 @@ class ListadoMaterias {
                 sessionStorage.setItem('carrera_actual_nombre', carrera_actual_nombre);
 
                 sessionStorage.setItem('carrera_actual_index', carrera_actual_index + 1);
-                listado_carreras[carrera_actual_index].querySelectorAll('a')[0].click();
+                // Los items que quedan son las licenciaturas que tienen un formato un poco distinto y paja de configurar.
+                if (carrera_actual_index < 9) {
+                    listado_carreras[carrera_actual_index].querySelectorAll('a')[0].click();
+                }
             }
             // Elijo el plan.
             else if (document.querySelector("#content > h3").innerText === 'Listado de Planes de estudio') {
@@ -327,7 +330,8 @@ class ListadoMaterias {
                         if (!(/orientaciones/i.test(header))) {
                             // Sacar solo la parte importante de los headers.
                             header = header.split(/(\s-\s)|(\s\()/)[0];
-                            if (!(/electivas/i.test(header))) {
+                            // Las electivas están diagramadas de otra manera. Seguro falte algún identificador más, sería mejor directamente buscar si tiene "Contenido" adentro pero whatevs.
+                            if (!(/(elect)|(práct)|(sat)/i.test(header))) {
                                 let cuatris = table.tBodies[0].rows;
                                 for (let cuatri of cuatris) {
                                     let [año, cuatrimestre] = cuatri.cells[0].querySelector('h4').innerText.split(' - ');
@@ -363,10 +367,39 @@ class ListadoMaterias {
                                     }
                                 }
                             }
+                            // Si es tabla de electivas.
+                            else {
+                                let materias = table.tBodies[0].querySelector('table > tbody').rows;
+                                for (let materia of materias) {
+                                    let data = materia.cells;
+                                    // Si el nombre no es un link quiere decir que no es una materia, lo cual rompería la lista.
+                                    if (data[0].querySelector('a')) {
+                                        let nombre = data[0].innerText.split(' - ')[1];
+                                        let código = data[0].innerText.split(' - ')[0];
+                                        let créditos = parseInt(data[1].innerText);
+                                        let créditos_requeridos = parseInt(data[2].innerText);
+                                        let correlativas = [];
+                                        for (let correlativa of data[3].querySelectorAll('span')) {
+                                            correlativas.push(correlativa.innerText.trim());
+                                        }
+                                        let especialización = header;
+                                        let info_según_carrera = Materia.get_info_según_carrera(plan_actual, carrera_actual, especialización, créditos_requeridos);
+                                        let materia_actual = new Materia ({ nombre: nombre,
+                                                                            código: código,
+                                                                            créditos: créditos,
+                                                                            correlativas: correlativas,
+                                                                            info_según_carrera});
+
+                                        lista_completa.agregar_materia(materia_actual);
+                                    }
+                                }
+                            }
                         }
                     }
                     sessionStorage.setItem('lista_completa_materias', JSON.stringify(lista_completa.listado));
                 }
+                // Volver a Académica > Carreras para seguir con las otras materias.
+                document.querySelectorAll('li > ul > li > a')[2].click();
             }
         }
     });
