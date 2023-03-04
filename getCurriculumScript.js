@@ -13,8 +13,8 @@ function parseCourseData(courseRow) {
   if (code) {
     const credits = parseInt(courseRow.cells[1].textContent)
     const requiredCredits = parseInt(courseRow.cells[2].textContent)
-    const correlatives = Array.from(courseRow.cells[3].querySelectorAll('span')).map(ele => ele.textContent.trim())
-    return { code, name, credits, requiredCredits, correlatives }
+    const prerequisites = Array.from(courseRow.cells[3].querySelectorAll('span')).map(ele => ele.textContent.trim())
+    return { code, name, credits, requiredCredits, prerequisites }
   } else {
     return null
   }
