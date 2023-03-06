@@ -1,24 +1,23 @@
 import { JSDOM } from 'jsdom'
 import sga_credentials from './.sga_credentials.js'
+import { getCookies, parseCookies } from './utils.js'
 
-const baseUrl = 'https://sga.itba.edu.ar/app2/'
+let baseUrl = 'https://sga.itba.edu.ar/app2/'
 async function login() {
   try {
-    const loginPageRes = await fetch(baseUrl, {omit: true})
+    const loginPageRes = await fetch(baseUrl)
+    // window.history.pushState(null, '', loginPageRes.url.replace(/;jsession.*$/, ''))
+    baseUrl = loginPageRes.url.replace(/;jsession.*$/, '')
 
     const loginPageHtml = await loginPageRes.text()
-    const doc = new DOMParser().parseFromString(loginPageHtml, 'text/html')
-    const base = document.createElement('base')
-    base.href = baseUrl + 'asdf/asdf/asdf/'
-    doc.head.insertBefore(base, doc.head.children[0])
 
-    const root = document.querySelector('html')
-    root.replaceChildren()
-    root.appendChild(doc.head)
-    root.appendChild(doc.body)
-
-    const path = loginPageHtml.match(/action="(?:\.\.\/)*(.*?)"/)[1]
+    const path = loginPageHtml.match(/action="(?:\.\.\/)*(.*?)(?:;jsessionid.*?)?"/)[1]
     const id = loginPageHtml.match(/input.*?id="(id[0-9a-zA-Z]+_[0-9a-zA-Z]{2,}_[0-9a-zA-Z]{1,})"/)[1]
+
+    const headers = new Headers()
+    const cookies = parseCookies(getCookies(loginPageRes))
+    cookies.forEach(cookie => headers.append('cookie', `${cookie.name}=${cookie.value}`))
+    headers.set('content-type', 'application/x-www-form-urlencoded')
 
     const body = new URLSearchParams()
     body.set(id, '')
@@ -29,31 +28,24 @@ async function login() {
 
     const postCredentialsRes = await fetch(baseUrl + path, {
       method: 'POST',
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded'
-      },
+      headers,
       body: body.toString(),
     })
-    const postCredentialsHtml = await postCredentialsRes.text()
-    console.log(postCredentialsHtml)
+    // window.history.pushState(null, '', postCredentialsRes.url.replace(/;jsession.*$/, ''))
 
-    return new DOMParser().parseFromString(postCredentialsHtml, 'text/html')
+    const postCredentialsHtml = await postCredentialsRes.text()
+
+    // return new DOMParser().parseFromString(postCredentialsHtml, 'text/html')
+    return postCredentialsHtml
   } catch (err) {
-    console.log(err)
+    throw new Error(err)
   }
 }
 
 async function prepSite() {
   const doc = await login()
-  const base = document.createElement('base')
-  base.href = baseUrl
-  doc.head.insertBefore(base, doc.head.children[0])
-  
-  const root = document.querySelector('html')
-  root.replaceChildren()
-  root.appendChild(doc.head)
-  root.appendChild(doc.body)
-  console.log('asdf')
+
+  console.log(doc)
 }
 
 prepSite()
