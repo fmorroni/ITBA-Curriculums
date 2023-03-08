@@ -10,7 +10,14 @@ app.use(cors())
 app.use(express.json())
 
 app.get('/', (req, res, next) => {
-  res.json({ msg: 'Working' })
+  console.log('req headers: ', req.headers)
+  console.log('res headers: ', res.headers)
+  res.json({ headers: req.headers })
+})
+app.post('/', (req, res, next) => {
+  console.log('req headers: ', req.headers)
+  // Wrong cookie format. FIX!
+  res.setHeader('set-cookie', 'carlos=roberto; hola=asdf;').json({ headers: req.headers })
 })
 
 // app.options('*', cors())
