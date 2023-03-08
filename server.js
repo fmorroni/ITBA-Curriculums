@@ -17,7 +17,7 @@ app.get('/', (req, res, next) => {
 app.post('/', (req, res, next) => {
   console.log('req headers: ', req.headers)
   // Wrong cookie format. FIX!
-  res.setHeader('set-cookie', 'carlos=roberto; hola=asdf;').json({ headers: req.headers })
+  res.setHeader('set-cookie', 'carlos=roberto; SameSite=None; Secure, hola=asdf;').json({ headers: req.headers })
 })
 
 // app.options('*', cors())

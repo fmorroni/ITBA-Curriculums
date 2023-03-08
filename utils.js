@@ -5,10 +5,10 @@ export function getRawCookies(response) {
   return cookies
 }
 
-export function parseCookies(cookies) {
-  const parsedCookies = new Map()
+export function parseCookies(cookies, { targetMap } = {}) {
+  const parsedCookies = targetMap || new Map()
   cookies.forEach(cookie => {
-    const cookieFileds = cookie.split(/; ?/)
+    const cookieFileds = cookie.replace(/;$/, '').split(/; ?/)
     const [name, value] = cookieFileds.shift().split('=')
     const newCookie = { name, value }
     cookieFileds.forEach(field => {
@@ -24,27 +24,42 @@ export function getCookies(response) {
   return parseCookies(getRawCookies(response))
 }
 
-export async function myFetch(url, config) {
+function setCookies(headers, cookies) {
+  headers.delete('cookie')
+  let cookieString = ''
+  cookies.forEach(cookie => cookieString += `${cookie.name}=${cookie.value}; `)
+  cookieString.replace(/; $/, '')
+  headers.set('cookie', cookieString)
+}
+
+export async function myFetch(url, { config = {}, cookies } = {}) {
   if (!(config.headers instanceof Headers)) {
-    console.log('Not Headers class')
     const headers = new Headers()
     if (config.headers) {
       for (const key in config.headers) headers.set(key, config.headers[key])
     }
     config.headers = headers
   }
-  console.log(config.headers)
+  if (!cookies) cookies = new Map()
+  if (config.headers.has('cookie')) {
+    parseCookies(config.headers.get('cookie').split(/, ?/), { targetMap: cookies })
+  }
+  setCookies(config.headers, cookies)
 
-  const maxRedirects = 2 
-  let res, redirect = true, redirectCount = 0, cookies = parseCookies(config.headers.get('cookie').split(/; ?/))
+  const maxRedirects = 10
+  let res, redirect = true, redirectCount = 0
   while (redirect && redirectCount <= maxRedirects) {
+    console.log('Current url: ' + redirectCount, url + '\n')
     res = await fetch(url, { ...config, redirect: 'manual' })
+    url = res.headers.get('location')
+    console.log('Location: ' + redirectCount, res.status, res.headers.get('location') + '\n')
+    console.log('set-cookies: ', res.headers.get('set-cookie') + '\n')
+    console.log('cookie: ', config.headers.get('cookie'), '\n\n')
     getCookies(res).forEach(cookie => cookies.set(cookie.name, cookie))
-    config.headers.delete('cookie')
-    cookies.forEach(cookie => config.headers.append('cookie', `${cookie.name}=${cookie.value}`))
+    setCookies(config.headers, cookies)
 
     ++redirectCount
-    redirect = true //(res.status === 302)
+    redirect = res.status === 302
   }
   if (redirect && redirectCount > maxRedirects) throw new Error("Max redirect count on myFetch() reached.")
 
