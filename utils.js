@@ -20,11 +20,11 @@ export function parseCookies(cookies, { targetMap } = {}) {
   return parsedCookies
 }
 
-export function getCookies(response) {
-  return parseCookies(getRawCookies(response))
+export function getCookies(response, { targetMap }) {
+  return parseCookies(getRawCookies(response), { targetMap })
 }
 
-function setCookies(headers, cookies) {
+function setCookieHeader(headers, cookies) {
   headers.delete('cookie')
   let cookieString = ''
   cookies.forEach(cookie => cookieString += `${cookie.name}=${cookie.value}; `)
@@ -44,19 +44,15 @@ export async function myFetch(url, { config = {}, cookies } = {}) {
   if (config.headers.has('cookie')) {
     parseCookies(config.headers.get('cookie').split(/, ?/), { targetMap: cookies })
   }
-  setCookies(config.headers, cookies)
+  setCookieHeader(config.headers, cookies)
 
   const maxRedirects = 10
   let res, redirect = true, redirectCount = 0
   while (redirect && redirectCount <= maxRedirects) {
-    console.log('Current url: ' + redirectCount, url + '\n')
     res = await fetch(url, { ...config, redirect: 'manual' })
     url = res.headers.get('location')
-    console.log('Location: ' + redirectCount, res.status, res.headers.get('location') + '\n')
-    console.log('set-cookies: ', res.headers.get('set-cookie') + '\n')
-    console.log('cookie: ', config.headers.get('cookie'), '\n\n')
-    getCookies(res).forEach(cookie => cookies.set(cookie.name, cookie))
-    setCookies(config.headers, cookies)
+    getCookies(res, { targetMap: cookies })
+    setCookieHeader(config.headers, cookies)
 
     ++redirectCount
     redirect = res.status === 302
