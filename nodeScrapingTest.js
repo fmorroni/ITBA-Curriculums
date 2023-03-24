@@ -1,9 +1,10 @@
-import { JSDOM } from 'jsdom'
-import { myFetch, getCookies, parseCookies } from './utils.js'
+// import { JSDOM } from 'jsdom'
+import { myFetch } from './utils.js'
 import sga_credentials from './.sga_credentials.js'
 
 let baseUrl = 'https://sga.itba.edu.ar/app2/'
 async function login() {
+  console.log('Parsing')
   try {
     const cookies = new Map()
     const loginPageRes = await myFetch(baseUrl, { cookies })
@@ -23,7 +24,6 @@ async function login() {
     body.set('js', '1')
     body.set('login', 'Ingresar')
 
-    console.log('Inicio sga: ', baseUrl + path, '\n')
     const postCredentialsRes = await myFetch( baseUrl + path, {
     config: {
       method: 'POST',
@@ -37,19 +37,20 @@ async function login() {
     })
     // window.history.pushState(null, '', postCredentialsRes.url.replace(/;jsession.*$/, ''))
 
-    const postCredentialsHtml = await postCredentialsRes.text()
+    // const postCredentialsHtml = await postCredentialsRes.text()
 
     // return new DOMParser().parseFromString(postCredentialsHtml, 'text/html')
-    return postCredentialsHtml
+    // return postCredentialsHtml
+    return postCredentialsRes
   } catch (err) {
     throw new Error(err)
   }
 }
 
 async function prepSite() {
-  const doc = await login()
-
-  console.log(doc)
+  const homePageRes = await login()
+  console.log(homePageRes.body)
+  homePageRes.body.on('data', (a,b,c) => console.log(a,b,c))
 }
 
 prepSite()
