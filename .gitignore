@@ -1,3 +1,4 @@
 node_modules/
-.database_config.js
-.sga_credentials.js
+**/.database_config*
+**/.sga_credentials*
+dist/
