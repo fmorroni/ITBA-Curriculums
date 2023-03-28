@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom'
 import { myFetch, getBaseUrl } from './utils.js'
-import sga_credentials from './.sga_credentials.js'
+import sga_credentials from '@/.sga_credentials.js'
 
 const cookies: CookieMap = new Map()
 

@@ -1,3 +1,5 @@
+import { type Options } from 'sequelize'
+
 export { };
 
 declare global {
@@ -8,4 +10,16 @@ declare global {
   }
 
   type CookieMap = Map<string, Cookie>
+
+  interface SgaCredentials {
+    user: string,
+    password: string,
+  }
+
+  interface DatabaseConfig {
+    name: string,
+    user: string,
+    pass: string,
+    options: Options,
+  }
 }

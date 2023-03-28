@@ -1,5 +1,5 @@
 import { Sequelize, DataTypes, Model } from 'sequelize'
-import db_config from './.database_config.js'
+import db_config from '@/.database_config.js'
 
 const sequelize = new Sequelize(db_config.name, db_config.user, db_config.pass, {
   ...db_config.options,
