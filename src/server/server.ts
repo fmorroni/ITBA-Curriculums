@@ -11,7 +11,7 @@ app.use(express.json())
 
 app.get('/', (req, res, next) => {
   console.log('req headers: ', req.headers)
-  console.log('res headers: ', res.headers)
+  console.log('res headers: ', res.header)
   res.json({ headers: req.headers })
 })
 app.post('/', (req, res, next) => {

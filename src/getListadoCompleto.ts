@@ -11,7 +11,7 @@
 // @grant        none
 // ==/UserScript==
 
-String.prototype.match_ignore_tildes = function (search_string) {
+String.prototype.match_ignore_tildes = function (search_string: String) {
     let replace_vowel_pattern = /([aá])|([eé])|([ií])|([oó])|([uú])/gi;
     let search_regexp = new RegExp(search_string.replaceAll(replace_vowel_pattern, (match,p1,p2,p3,p4,p5,offset,string)=>{
         p1 = (p1 !== undefined ? '[aá]' : '');
